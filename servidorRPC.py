@@ -1,22 +1,33 @@
 # servidorrpc.py
-import rpyc, threading, time
+import rpyc
+import threading
+import time
 from rpyc.utils.server import ThreadedServer
 
 _lock = threading.Lock()
 _seq = 0
-_eventos = []
+_eventos = []  # cada item: {"seq","type":"move","player","x","y","ts"}
 
 class Servico(rpyc.Service):
-    def exposed_publicar_movimento(self, player, x, y, direcao):
+    def exposed_publicar_posicao(self, player, x, y):
+        #a posição (x,y) do jogador.
         global _seq, _eventos
         with _lock:
             _seq += 1
             _eventos.append({
-                "seq": _seq, "type": "move", "player": str(player),
-                "x": float(x), "y": float(y), "dir": str(direcao or ""), "ts": time.time(),
+                "seq": _seq,
+                "type": "move",   
+                "player": str(player),
+                "x": float(x),
+                "y": float(y),
+                "ts": time.time(),
             })
-            if len(_eventos) > 5000: del _eventos[:3000]
+            if len(_eventos) > 5000:
+                del _eventos[:3000]
             return True
+
+    def exposed_publicar_movimento(self, player, x, y, *_, **__):
+        return self.exposed_publicar_posicao(player, x, y)
 
     def exposed_obter_eventos(self, desde_seq):
         with _lock:
@@ -28,7 +39,7 @@ if __name__ == "__main__":
     print("[Servidor] escutando em 0.0.0.0:18861")
     ThreadedServer(
         Servico,
-        hostname="0.0.0.0",              # <<< aceita conexões remotas
+        hostname="0.0.0.0",
         port=18861,
-        protocol_config={"allow_public_attrs": True},
+        protocol_config={"allow_public_attrs": True}
     ).start()
