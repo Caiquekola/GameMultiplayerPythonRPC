@@ -1,4 +1,5 @@
 # game.py
+import hashlib
 import turtle
 import time
 import random
@@ -27,9 +28,9 @@ head.direction = "stop"
 head.color(random.choice(PALETA))  
 
 def cor_para(nome):
-    if nome not in cores_outros:
-        cores_outros[nome] = random.choice(PALETA)  
-    return cores_outros[nome]
+    h = hashlib.md5(nome.encode("utf-8")).hexdigest()
+    idx = int(h[:8], 16) % len(PALETA)
+    return PALETA[idx]
 
 def go_up():    head.direction = "up"
 def go_down():  head.direction = "down"
@@ -79,10 +80,10 @@ def main():
     parser.add_argument("--name", default="Jogador")
     args = parser.parse_args()
 
-    # Teste rápido para evitar travar
+    # Teste p evitar travar
     if not porta_aberta(args.server, args.port, timeout=1.5):
         wn.title(f"Servidor {args.server}:{args.port} inacessível")
-        print(f"[ERRO] não consigo conectar em {args.server}:{args.port}. ")
+        print(f"não consigo conectar em {args.server}:{args.port}. ")
         return
 
     proxy = rpyc.connect(
@@ -90,22 +91,24 @@ def main():
         config={'allow_public_attrs': True, 'sync_request_timeout': 2.0}
     ).root
     meu_nome = args.name
-
-    ultimo_seq = 0
+    head.color(cor_para(meu_nome))
+    estado_inicial = proxy.obter_eventos(0)
+    ultimo_seq = estado_inicial["ultimo_seq"]
+    
     ultimo_publicado = (None, None)
 
     while True:
         wn.update()
         move()
 
-        # publica só a pos se mudou
+        #   pos se mudou
         x, y = head.xcor(), head.ycor()
         if (x, y) != ultimo_publicado:
             try:
                 proxy.publicar_posicao(meu_nome, x, y)
                 ultimo_publicado = (x, y)
             except Exception as e:
-                print("[WARN] publicar_posicao falhou:", e)
+                print("publicar_posicao falhou:", e)
 
         # busca eventos e aplica
         try:

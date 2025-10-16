@@ -6,7 +6,7 @@ from rpyc.utils.server import ThreadedServer
 
 _lock = threading.Lock()
 _seq = 0
-_eventos = []  # cada item: {"seq","type":"move","player","x","y","ts"}
+_eventos = []  #{"seq","type":"move","player","x","y","ts"}
 
 class Servico(rpyc.Service):
     def exposed_publicar_posicao(self, player, x, y):
